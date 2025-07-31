@@ -1,35 +1,56 @@
-
+ $startTime = Get-Date
 # Définir le chemin à analyser
 $chemin = "C:\Users\Fahim\Documents\My Games\FarmingSimulator2022\mods"
+# charger la libraire dotnt pour les zip
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-# Parcourir chaque fichier .zip dans le dossier
 Get-ChildItem -Path $chemin -Filter *.zip | ForEach-Object {
     $zipPath = $_.FullName
     $tempDir = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
     New-Item -ItemType Directory -Path $tempDir | Out-Null
+    $modDescTempPath = Join-Path $tempDir "modDesc.xml"
 
-    # Extraire le fichier modDesc.xml
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $tempDir)
+    # Ouvrir le fichier zip
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
 
-    $modDescPath = Join-Path $tempDir "modDesc.xml"
-    if (Test-Path $modDescPath) {
-        $xml = [xml](Get-Content $modDescPath)
-        
+    # Trouver l’entrée modDesc.xml (insensible à la casse)
+    $entry = $zip.Entries | Where-Object { $_.FullName -ieq "modDesc.xml" }
+
+    if ($entry) {
+        # Extraire manuellement via Stream
+        $stream = $entry.Open()
+        $fileStream = [System.IO.File]::Create($modDescTempPath)
+        $stream.CopyTo($fileStream)
+        $stream.Close()
+        $fileStream.Close()
+        $zip.Dispose()
+
+        # Charger et modifier le XML
+        $xml = [xml](Get-Content $modDescTempPath)
+        Write-Host "Traitement de $($xml.modDesc.title.en)"
         if ($xml.modDesc.descversion -eq "80") {
             $xml.modDesc.descversion = "79"
-            $xml.Save($modDescPath)
-            Write-Host "Version modifiée dans "$_.FullName "("$xml.modDesc.title.en")"
+            $xml.Save($modDescTempPath)
+            Write-Host "Version modifiée dans $zipPath ($($xml.modDesc.title.en))"
 
-            # Mettre à jour le zip
+            # Remplacer le fichier dans le zip
+            $tempZipDir = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
+            New-Item -ItemType Directory -Path $tempZipDir | Out-Null
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $tempZipDir)
+
+            # Copier le fichier modifié
+            Copy-Item -Path $modDescTempPath -Destination (Join-Path $tempZipDir "modDesc.xml") -Force
+
+            # Recréer le zip
             Remove-Item $zipPath
-            [System.IO.Compression.ZipFile]::CreateFromDirectory($tempDir, $zipPath)
-            #Write-Host "Version modifiée dans $zipPath"
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($tempZipDir, $zipPath)
+
+            Remove-Item -Path $tempZipDir -Recurse -Force
         }
     }
-   Remove-Item -Path $tempDir -Recurse -Force
-}
 
+    Remove-Item -Path $tempDir -Recurse -Force
+}
 $endTime = Get-Date
 $duration = $endTime - $startTime
 Write-Host "Temps d'exécution total : $($duration.TotalSeconds) secondes"
