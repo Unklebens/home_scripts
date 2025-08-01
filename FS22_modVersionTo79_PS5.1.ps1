@@ -27,11 +27,11 @@ Get-ChildItem -Path $chemin -Filter *.zip | ForEach-Object {
 
         # Charger et modifier le XML
         $xml = [xml](Get-Content $modDescTempPath)
-        Write-Host "Traitement de $($xml.modDesc.title.en)"
+        Write-Host "Analyse de $($xml.modDesc.title.en)"
         if ($xml.modDesc.descversion -eq "80") {
             $xml.modDesc.descversion = "79"
             $xml.Save($modDescTempPath)
-            Write-Host "Version modifiée dans $zipPath ($($xml.modDesc.title.en))"
+            Write-Host "Version modifiée dans $zipPath ($($xml.modDesc.title.en))" -ForegroundColor Yellow
 
             # Remplacer le fichier dans le zip
             $tempZipDir = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
@@ -54,3 +54,5 @@ Get-ChildItem -Path $chemin -Filter *.zip | ForEach-Object {
 $endTime = Get-Date
 $duration = $endTime - $startTime
 Write-Host "Temps d'exécution total : $($duration.TotalSeconds) secondes"
+Start-Sleep -Seconds 5
+Write-Host "Appuyez sur une touche pour quitter..."
