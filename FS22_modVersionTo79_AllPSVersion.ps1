@@ -1,8 +1,7 @@
 # Description: Script PowerShell pour modifier la version de description de modDesc.xml de 80 à 79 dans les mods de Farming Simulator 22.
 Write-Host "Analyse des mods en cours" -ForegroundColor Cyan
 $startTime = Get-Date
-$chemin = "C:\Users\Fahim\Documents\My Games\FarmingSimulator2022\mods"
-
+Get-ModFolder 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $psMajor = $PSVersionTable.PSVersion.Major
@@ -55,4 +54,18 @@ Get-ChildItem -Path $chemin -Filter *.zip | ForEach-Object {
 $endTime = Get-Date
 $duration = $endTime - $startTime
 Write-Host "Temps d'exécution total : $($duration.TotalSeconds) secondes" -ForegroundColor Green
-Start-Sleep -Seconds 5
+#Start-Sleep -Seconds 5
+
+
+function Get-ModFolder {
+    $modfolder = [xml](Get-Content "C:\Users\$env:USERNAME\Documents\My Games\FarmingSimulator2022\gameSettings.xml")
+
+    if ($modfolder.gameSettings.modsDirectoryOverride.active -eq "false") {
+        <# Action to perform if the condition is true #>
+        $chemin= "C:\Users\$env:USERNAME\Documents\My Games\FarmingSimulator2022\mods"
+    } else {
+        <# Action to perform if the condition is false #>
+        $chemin = $modfolder.gameSettings.modsDirectoryOverride.directory
+    }
+    Write-Host "Chemin des mods : $chemin" -ForegroundColor Cyan
+}
