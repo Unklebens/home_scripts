@@ -2,6 +2,7 @@
 Write-Host "Analyse des mods en cours" -ForegroundColor Cyan
 $startTime = Get-Date
 Get-ModFolder 
+Get-FSVersion
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $psMajor = $PSVersionTable.PSVersion.Major
