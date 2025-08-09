@@ -33,7 +33,7 @@ Get-ChildItem -Path $chemin -Filter *.zip | ForEach-Object {
         $xml = [xml](Get-Content $modDescTempPath)
 
         if ($xml.modDesc.descversion -eq "80") {
-            $xml.modDesc.descversion = "FSVersion"
+            $xml.modDesc.descversion = $FSVersion
             $xml.Save($modDescTempPath)
             Write-Host "Version modifiée dans ($($xml.modDesc.title.en))" -ForegroundColor Yellow
 
@@ -73,6 +73,7 @@ function Get-ModFolder {
 
 function Get-FSVersion {
     Select-String -path "C:\Users\$env:USERNAME\Documents\My Games\FarmingSimulator2022\log.txt" -Pattern "ModDesc" | ForEach-Object {
-        $FSVersion = $_.Line.Split(":")[1].Trim()     
+        $FSVersion = $_.Line.Split(":")[1].Trim()
+        Write-Host "Version de Farming Simulator : $FSVersion" -ForegroundColor Cyan  
 }
 }
