@@ -1,0 +1,1 @@
+ssh -o StrictHostKeyChecking=no -i C:\Users\Fahim\xps root@192.168.35.21 -t 'ansible-playbook -i ./homelab/ansible/proxmoxvm.yml ./homelab/ansible/apt.yml'
