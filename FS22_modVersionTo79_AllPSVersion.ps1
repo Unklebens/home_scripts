@@ -56,7 +56,7 @@ Get-ChildItem -Path $chemin -Filter *.zip | ForEach-Object {
         if ($xml.modDesc.descversion -eq "80") {
             $xml.modDesc.descversion = $FSVersion
             $xml.Save($modDescTempPath)
-            Write-Host "Version modifiée dans ($($xml.modDesc.title.en))" -ForegroundColor Yellow
+            Write-Host "Version mise a jour dans ($($xml.modDesc.title.en))" -ForegroundColor Yellow
 
             $tempZipDir = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
             New-Item -ItemType Directory -Path $tempZipDir | Out-Null
