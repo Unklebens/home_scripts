@@ -20,60 +20,58 @@ function Get-FSVersion {
     }
 }
 
+# ...existing code...
 $chemin = Get-ModFolder
 Write-Host "Le dossier des mods est : $chemin" -ForegroundColor Cyan
 $FSVersion = Get-FSVersion
 Write-Host "Version de FS22 : $FSVersion" -ForegroundColor Cyan
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$psMajor = $PSVersionTable.PSVersion.Major
+#$psMajor = $PSVersionTable.PSVersion.Major
 
 Write-Host "Analyse des mods en cours" -ForegroundColor Cyan
 Get-ChildItem -Path $chemin -Filter *.zip | ForEach-Object {
     $zipPath = $_.FullName
-    $tempDir = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
-    New-Item -ItemType Directory -Path $tempDir | Out-Null
-    $modDescTempPath = Join-Path $tempDir "modDesc.xml"
 
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
-    $entry = $zip.Entries | Where-Object { $_.FullName -ieq "modDesc.xml" }
-
-    if ($entry) {
-        if ($psMajor -ge 7) {
-            # Méthode PowerShell 7+
-            $entry.ExtractToFile($modDescTempPath)
-        } else {
-            # Méthode PowerShell 5.1
-            $stream = $entry.Open()
-            $fileStream = [System.IO.File]::Create($modDescTempPath)
-            $stream.CopyTo($fileStream)
-            $stream.Close()
-            $fileStream.Close()
-        }
-        $zip.Dispose()
-
-        $xml = [xml](Get-Content $modDescTempPath)
-
-        if ($xml.modDesc.descversion -eq "80") {
-            $xml.modDesc.descversion = $FSVersion
-            $xml.Save($modDescTempPath)
-            Write-Host "Version mise a jour dans ($($xml.modDesc.title.en))" -ForegroundColor Yellow
-
-            $tempZipDir = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
-            New-Item -ItemType Directory -Path $tempZipDir | Out-Null
-            [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $tempZipDir)
-
-            Copy-Item -Path $modDescTempPath -Destination (Join-Path $tempZipDir "modDesc.xml") -Force
-
-            Remove-Item $zipPath
-            [System.IO.Compression.ZipFile]::CreateFromDirectory($tempZipDir, $zipPath)
-
-            Remove-Item -Path $tempZipDir -Recurse -Force
-        }
+    try {
+        $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Update)
+    } catch {
+        Write-Host "Impossible d'ouvrir l'archive : $zipPath ($($_.Exception.Message))" -ForegroundColor Red
+        return
     }
 
-    Remove-Item -Path $tempDir -Recurse -Force
+    try {
+        # Cherche l'entrée modDesc.xml (peu importe le chemin interne)
+        $entry = $archive.Entries | Where-Object { $_.Name -ieq "modDesc.xml" } | Select-Object -First 1
+
+        if ($entry) {
+            # Lire le contenu XML directement depuis l'entrée sans extraire toute l'archive
+            $sr = New-Object System.IO.StreamReader ($entry.Open())
+            $xmlContent = $sr.ReadToEnd()
+            $sr.Close()
+
+            $xml = [xml]$xmlContent
+
+            if ($xml.modDesc -and $xml.modDesc.descversion -eq "80") {
+                $xml.modDesc.descversion = $FSVersion
+
+                # Supprime l'ancienne entrée puis crée une nouvelle entrée modDesc.xml et écrit le XML modifié
+                $entry.Delete() 
+
+                $newEntry = $archive.CreateEntry("modDesc.xml")
+                $ws = $newEntry.Open()
+                # XmlDocument.Save accepte un stream
+                $xml.Save($ws)
+                $ws.Close()
+
+                Write-Host "Version mise a jour dans ($($xml.modDesc.title.en))" -ForegroundColor Yellow
+            }
+        }
+    } finally {
+        $archive.Dispose()
+    }
 }
 $endTime = Get-Date
 $duration = $endTime - $startTime
 Write-Host "Temps d'execution total : $($duration.TotalSeconds) secondes" -ForegroundColor Green
+# ...existing code...
 #Start-Sleep -Seconds 5
